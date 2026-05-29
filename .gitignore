@@ -1,0 +1,64 @@
+# ─── Dependencies ───
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ─── Next.js ───
+/.next/
+/out/
+next-env.d.ts
+
+# ─── Production build ───
+/build
+/dist
+
+# ─── Environment / secrets ───
+.env
+.env.*
+!.env.example
+
+# ─── Database / Drizzle ───
+# Keep migrations (drizzle/) tracked; ignore local db dumps
+*.sqlite
+*.sqlite3
+*.db
+/supabase/.temp
+
+# ─── Logs & debug ───
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# ─── Testing / coverage ───
+/coverage
+
+# ─── Caches ───
+.turbo
+.cache
+.eslintcache
+*.tsbuildinfo
+
+# ─── Editor / OS ───
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ─── Vercel ───
+.vercel
+
+# ─── OpenWolf local artifacts (keep cerebrum/anatomy/memory tracked) ───
+.wolf/designqc-captures/
+.claude/designqc-captures/
+.claude/settings.local.json
+
+.claude/
+.wolf/
