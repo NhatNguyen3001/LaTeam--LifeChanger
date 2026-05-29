@@ -80,6 +80,10 @@ export async function POST(req: Request) {
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
+    // Assign a stable id to the assistant reply. Without this, the response
+    // message has an empty id (the last original message is a user message),
+    // so it gets dropped/collides on save and replies never persist.
+    generateMessageId: () => crypto.randomUUID(),
     onFinish: async ({ messages: finalMessages }) => {
       if (chatId) {
         try {
