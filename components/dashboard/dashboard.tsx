@@ -36,6 +36,57 @@ const PALETTE = [
 
 type FilterState = Record<string, string[]>;
 
+function collectSeriesValues(data: DataRow[], series: { key: string }[]): number[] {
+  const vals: number[] = [];
+  for (const row of data) {
+    for (const s of series) {
+      const v = row[s.key];
+      if (typeof v === "number" && !Number.isNaN(v)) vals.push(v);
+    }
+  }
+  return vals;
+}
+
+/** Zoom Y-axis for Likert /5 data so term-to-term changes are visible. */
+function likertYDomain(values: number[]): [number, number] {
+  if (values.length === 0) return [0, 5];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  let lo = Math.max(0, Math.floor((min - 0.15) * 10) / 10);
+  let hi = Math.min(5, Math.ceil((max + 0.15) * 10) / 10);
+  if (hi - lo < 0.6) {
+    const mid = (hi + lo) / 2;
+    lo = Math.max(0, Math.round((mid - 0.35) * 10) / 10);
+    hi = Math.min(5, Math.round((mid + 0.35) * 10) / 10);
+  }
+  return [lo, hi];
+}
+
+function isLikertChart(
+  widget: Extract<Widget, { kind: "line" | "bar" }>,
+  stats: Extract<Widget, { kind: "stat" }>[],
+): boolean {
+  const values = collectSeriesValues(widget.data, widget.series);
+  if (values.length === 0) return false;
+
+  const title = widget.title.toLowerCase();
+  const seriesText = widget.series
+    .map((s) => `${s.key} ${s.label ?? ""}`.toLowerCase())
+    .join(" ");
+
+  if (stats.some((s) => s.unit === "/5" || String(s.unit).includes("/5"))) return true;
+  if (/likert|rating|avg_likert/.test(title + seriesText)) return true;
+  return values.every((v) => v >= 0 && v <= 5.5) && values.some((v) => v > 0 && v <= 5);
+}
+
+function yDomainForChart(
+  widget: Extract<Widget, { kind: "line" | "bar" }>,
+  stats: Extract<Widget, { kind: "stat" }>[],
+): [number, number] | undefined {
+  if (!isLikertChart(widget, stats)) return undefined;
+  return likertYDomain(collectSeriesValues(widget.data, widget.series));
+}
+
 function filterRows(rows: DataRow[], filters: DashboardFilter[], state: FilterState) {
   return rows.filter((r) =>
     filters.every((f) => {
@@ -51,23 +102,28 @@ function filterRows(rows: DataRow[], filters: DashboardFilter[], state: FilterSt
 function StatTile({ w }: { w: Extract<Widget, { kind: "stat" }> }) {
   const up = (w.delta ?? 0) >= 0;
   return (
-    <div className="bg-card rounded-xl border p-4">
-      <div className="text-muted-foreground text-xs">{w.label}</div>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold tracking-tight">
-          {w.value}
-          {w.unit ? <span className="text-muted-foreground ml-0.5 text-base">{w.unit}</span> : null}
-        </span>
+    <div className="overflow-hidden rounded-2xl border-2 border-foreground bg-white">
+      <p className="lc-heading border-b border-foreground/10 px-4 py-2.5 text-[10px] leading-snug tracking-[0.08em]">
+        {w.label}
+      </p>
+      <div className="bg-primary px-4 py-4">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-3xl font-bold tabular-nums tracking-tight">{w.value}</span>
+          {w.unit ? (
+            <span className="text-base font-semibold opacity-80">{w.unit}</span>
+          ) : null}
+        </div>
         {w.delta != null && (
-          <span
+          <p
             className={cn(
-              "inline-flex items-center gap-0.5 text-xs",
-              up ? "text-chart-2" : "text-destructive",
+              "mt-2 inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold",
+              up ? "text-foreground" : "text-destructive",
             )}
           >
             {up ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
+            {up ? "+" : "−"}
             {Math.abs(w.delta)}
-          </span>
+          </p>
         )}
       </div>
     </div>
@@ -76,9 +132,9 @@ function StatTile({ w }: { w: Extract<Widget, { kind: "stat" }> }) {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-card rounded-xl border p-4">
-      <div className="mb-3 text-sm font-medium">{title}</div>
-      <div className="h-56 w-full">
+    <div className="rounded-2xl border border-foreground/20 bg-white p-4">
+      <div className="lc-heading mb-3 text-xs tracking-[0.1em]">{title}</div>
+      <div className="h-56 w-full lg:h-64 xl:h-72">
         <ResponsiveContainer width="100%" height="100%">
           {children as React.ReactElement}
         </ResponsiveContainer>
@@ -145,10 +201,10 @@ export function Dashboard({
   const rest = widgets.filter((w) => w.kind !== "stat");
 
   return (
-    <div className="bg-muted/30 space-y-4 rounded-2xl border p-4">
+    <div className="lc-brown-card space-y-4 rounded-3xl p-4">
       {spec.title && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-medium">{spec.title}</h3>
+          <h3 className="lc-heading text-sm tracking-[0.08em]">{spec.title}</h3>
         </div>
       )}
 
@@ -166,10 +222,10 @@ export function Dashboard({
                       key={opt}
                       onClick={() => toggle(f, opt)}
                       className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                        "lc-pill py-1 text-[10px] tracking-[0.08em]",
                         active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card hover:border-ring/50",
+                          ? "bg-primary shadow-[2px_2px_0_0_var(--lc-white)]"
+                          : "hover:bg-primary/40",
                       )}
                     >
                       {opt}
@@ -183,20 +239,20 @@ export function Dashboard({
       )}
 
       {stats.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {stats.map((w, i) => (
             <StatTile key={w.id ?? i} w={w} />
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
         {rest.map((w, i) => {
           const key = w.id ?? `${w.kind}-${i}`;
           if (w.kind === "table") {
             return (
-              <div key={key} className="bg-card rounded-xl border p-4 md:col-span-2">
-                <div className="mb-3 text-sm font-medium">{w.title}</div>
+              <div key={key} className="rounded-2xl border border-foreground/20 bg-white p-4 lg:col-span-2 xl:col-span-3">
+                <div className="lc-heading mb-3 text-xs tracking-[0.1em]">{w.title}</div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="text-muted-foreground text-left">
@@ -225,13 +281,19 @@ export function Dashboard({
             );
           }
           if (w.kind === "line") {
+            const yDomain = yDomainForChart(w, stats);
             return (
-              <div key={key} className="md:col-span-2">
+              <div key={key} className="lg:col-span-2 xl:col-span-3">
                 <ChartCard title={w.title}>
-                  <LineChart data={w.data} margin={{ top: 8, right: 12, bottom: 4, left: -12 }}>
+                  <LineChart data={w.data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey={w.x} tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      domain={yDomain ?? ["auto", "auto"]}
+                      allowDataOverflow={false}
+                      tickCount={yDomain ? 6 : undefined}
+                    />
                     <Tooltip />
                     {w.series.length > 1 && <Legend />}
                     {w.series.map((s, si) => (
@@ -241,8 +303,9 @@ export function Dashboard({
                         dataKey={s.key}
                         name={s.label ?? s.key}
                         stroke={PALETTE[si % PALETTE.length]}
-                        strokeWidth={2}
-                        dot={false}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: PALETTE[si % PALETTE.length] }}
+                        activeDot={{ r: 6 }}
                       />
                     ))}
                   </LineChart>
@@ -251,12 +314,18 @@ export function Dashboard({
             );
           }
           if (w.kind === "bar") {
+            const yDomain = yDomainForChart(w, stats);
             return (
               <ChartCard key={key} title={w.title}>
-                <BarChart data={w.data} margin={{ top: 8, right: 12, bottom: 4, left: -12 }}>
+                <BarChart data={w.data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey={w.x} tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    domain={yDomain ?? ["auto", "auto"]}
+                    allowDataOverflow={false}
+                    tickCount={yDomain ? 6 : undefined}
+                  />
                   <Tooltip />
                   {w.series.length > 1 && <Legend />}
                   {w.series.map((s, si) => (

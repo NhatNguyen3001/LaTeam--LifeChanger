@@ -2,6 +2,8 @@ import { eq, desc } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/lib/db";
 import { chats, messages, dashboards } from "@/lib/db/schema";
+import { dedupeMessagesById } from "@/lib/chat/dedupe-messages";
+import { normalizeParts } from "@/lib/chat/message-parts";
 
 export async function createChat(id: string, title: string) {
   await db
@@ -17,17 +19,42 @@ export async function listChats() {
     .orderBy(desc(chats.createdAt));
 }
 
+export async function getChat(chatId: string) {
+  const [row] = await db
+    .select({ id: chats.id, title: chats.title })
+    .from(chats)
+    .where(eq(chats.id, chatId))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function deleteChat(id: string) {
+  await db.delete(chats).where(eq(chats.id, id));
+}
+
+export async function deleteAllChats() {
+  await db.delete(chats);
+}
+
 export async function loadChatMessages(chatId: string): Promise<UIMessage[]> {
   const rows = await db
     .select()
     .from(messages)
     .where(eq(messages.chatId, chatId))
     .orderBy(messages.createdAt);
-  return rows.map((r) => ({
-    id: r.id,
-    role: r.role as UIMessage["role"],
-    parts: r.parts as UIMessage["parts"],
-  }));
+  return dedupeMessagesById(
+    rows
+      .map((r) => {
+        const parts = normalizeParts(r.parts);
+        if (parts.length === 0) return null;
+        return {
+          id: r.id,
+          role: r.role as UIMessage["role"],
+          parts,
+        };
+      })
+      .filter((m): m is UIMessage => m != null),
+  );
 }
 
 /** Persist any dashboards composed in this turn as referenceable objects. */
@@ -52,11 +79,11 @@ export async function saveDashboards(chatId: string, msgs: UIMessage[]) {
 
 /** Replace the stored messages for a chat with the latest full list. */
 export async function saveMessages(chatId: string, msgs: UIMessage[]) {
+  const unique = dedupeMessagesById(msgs);
   await db.delete(messages).where(eq(messages.chatId, chatId));
-  if (msgs.length === 0) return;
+  if (unique.length === 0) return;
   await db.insert(messages).values(
-    msgs.map((m) => ({
-      id: m.id,
+    unique.map((m) => ({      id: m.id,
       chatId,
       role: m.role,
       parts: m.parts as unknown as object,

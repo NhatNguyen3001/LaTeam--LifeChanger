@@ -1,24 +1,25 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { Loader2, Database, Search, Wrench } from "lucide-react";
+import { Loader2, Database, Search, Wrench, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dashboard } from "@/components/dashboard/dashboard";
+import { MarkdownContent } from "@/components/chat/markdown-content";
 import type { DashboardSpec } from "@/lib/dashboard/types";
 
 const TOOL_LABELS: Record<string, { label: string; icon: typeof Wrench }> = {
-  query_data: { label: "Queried the data", icon: Database },
-  search_feedback: { label: "Searched feedback", icon: Search },
-  make_dashboard: { label: "Built a dashboard", icon: Wrench },
+  query_data: { label: "Queried program data", icon: Database },
+  search_feedback: { label: "Searched student feedback", icon: Search },
+  make_dashboard: { label: "Built dashboard", icon: Wrench },
 };
 
 function ToolChip({ name, running }: { name: string; running: boolean }) {
   const meta = TOOL_LABELS[name] ?? { label: name, icon: Wrench };
   const Icon = running ? Loader2 : meta.icon;
   return (
-    <div className="text-muted-foreground bg-muted/50 inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">
+    <div className="lc-pill inline-flex items-center gap-1.5 py-1.5 text-xs normal-case tracking-normal">
       <Icon className={cn("size-3.5", running && "animate-spin")} />
-      {running ? `${meta.label.replace(/ed /, "ing ").replace(/ed$/, "ing")}…` : meta.label}
+      {running ? "Working…" : meta.label}
     </div>
   );
 }
@@ -27,21 +28,55 @@ export function Message({ message }: { message: UIMessage }) {
   const isUser = message.role === "user";
 
   return (
-    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
+    <div
+      className={cn(
+        "flex w-full gap-3",
+        isUser ? "flex-row-reverse" : "flex-row",
+      )}
+    >
       <div
         className={cn(
-          "space-y-2",
+          "flex size-8 shrink-0 items-center justify-center rounded-full border",
           isUser
-            ? "bg-primary text-primary-foreground max-w-[85%] rounded-2xl px-4 py-2.5"
-            : "w-full",
+            ? "border-foreground bg-white text-foreground"
+            : "border-foreground bg-primary text-primary-foreground",
+        )}
+        aria-hidden
+      >
+        {isUser ? <User className="size-4" /> : <Sparkles className="size-4" />}
+      </div>
+
+      <div
+        className={cn(
+          "min-w-0 space-y-3",
+          isUser ? "max-w-[min(90%,32rem)] lg:max-w-xl" : "max-w-full flex-1",
         )}
       >
+        <p className="lc-heading text-[10px] tracking-[0.12em] text-muted-foreground">
+          {isUser ? "You" : "Impact AI"}
+        </p>
+
         {message.parts.map((part, i) => {
+          const partKey =
+            "toolCallId" in part && typeof part.toolCallId === "string"
+              ? part.toolCallId
+              : `${part.type}-${i}`;
           if (part.type === "text") {
             return (
-              <p key={i} className="text-sm leading-relaxed whitespace-pre-wrap">
-                {part.text}
-              </p>
+              <div
+                key={partKey}
+                className={cn(
+                  isUser
+                    ? "rounded-2xl rounded-tr-md border border-foreground bg-white px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+                    : "lc-brown-card rounded-3xl px-4 py-4",
+                )}
+              >
+                {isUser ? (
+                  part.text
+                ) : (
+                  <MarkdownContent content={part.text} />
+                )}
+              </div>
             );
           }
           if (part.type === "reasoning") {
@@ -50,9 +85,9 @@ export function Message({ message }: { message: UIMessage }) {
           if (part.type === "tool-make_dashboard") {
             if ("state" in part && part.state === "output-available") {
               const out = part.output as { dashboardId: string; spec: DashboardSpec };
-              return <Dashboard key={i} spec={out.spec} dashboardId={out.dashboardId} />;
+              return <Dashboard key={partKey} spec={out.spec} dashboardId={out.dashboardId} />;
             }
-            return <ToolChip key={i} name="make_dashboard" running />;
+            return <ToolChip key={partKey} name="make_dashboard" running />;
           }
           if (part.type.startsWith("tool-")) {
             const name = part.type.slice("tool-".length);
@@ -60,7 +95,17 @@ export function Message({ message }: { message: UIMessage }) {
               "state" in part &&
               part.state !== "output-available" &&
               part.state !== "output-error";
-            return <ToolChip key={i} name={name} running={running} />;
+            if ("state" in part && part.state === "output-error") {
+              return (
+                <div
+                  key={partKey}
+                  className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border px-3 py-2 text-xs"
+                >
+                  Tool &quot;{name}&quot; failed — check database connection and API keys.
+                </div>
+              );
+            }
+            return <ToolChip key={partKey} name={name} running={running} />;
           }
           return null;
         })}

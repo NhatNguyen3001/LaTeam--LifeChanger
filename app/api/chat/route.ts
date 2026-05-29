@@ -10,6 +10,8 @@ import { CHAT_MODEL } from "@/lib/ai/models";
 import { SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { chatTools } from "@/lib/ai/tools";
 import { saveMessages, saveDashboards } from "@/lib/db/chat-store";
+import { lastUserText, loadDemoContext, demoSystemContext } from "@/lib/chat/demo-responses";
+import { dedupeMessagesById } from "@/lib/chat/dedupe-messages";
 
 export const maxDuration = 60;
 
@@ -20,23 +22,41 @@ type ActiveDashboard = {
 };
 
 export async function POST(req: Request) {
-  const {
-    messages,
-    chatId,
-    activeDashboard,
-  }: { messages: UIMessage[]; chatId?: string; activeDashboard?: ActiveDashboard } =
-    await req.json();
+  const json = await req.json();
+  const messages: UIMessage[] = dedupeMessagesById(json.messages ?? []);
+  const chatId: string | undefined = json.chatId ?? json.id;
+  const activeDashboard: ActiveDashboard | undefined = json.activeDashboard;
+
+  if (!messages.length) {
+    return Response.json({ error: "messages required" }, { status: 400 });
+  }
+
+  // Persist user turns immediately so history survives navigation mid-stream.
+  if (chatId) {
+    try {
+      await saveMessages(chatId, messages);
+    } catch (e) {
+      console.error("POST /api/chat saveMessages (pre-stream)", e);
+    }
+  }
 
   const systemMessage: ModelMessage = {
     role: "system",
     content: SYSTEM_PROMPT,
-    // Cache the (static) system prompt + tool definitions across turns.
     providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } },
   };
 
-  // "Active dashboard context": tell the model what the user is actually looking at,
-  // including their current client-side filter selection, so follow-ups reason about it.
   const contextMessages: ModelMessage[] = [];
+
+  const userText = lastUserText(messages);
+  const demo = await loadDemoContext(userText).catch(() => null);
+  if (demo) {
+    contextMessages.push({
+      role: "system",
+      content: demoSystemContext(demo),
+    });
+  }
+
   if (activeDashboard) {
     contextMessages.push({
       role: "system",
@@ -55,15 +75,19 @@ export async function POST(req: Request) {
     model: anthropic(CHAT_MODEL),
     messages: [systemMessage, ...contextMessages, ...(await convertToModelMessages(messages))],
     tools: chatTools,
-    stopWhen: stepCountIs(6),
+    stopWhen: stepCountIs(8),
   });
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
     onFinish: async ({ messages: finalMessages }) => {
       if (chatId) {
-        await saveMessages(chatId, finalMessages);
-        await saveDashboards(chatId, finalMessages);
+        try {
+          await saveMessages(chatId, finalMessages);
+          await saveDashboards(chatId, finalMessages);
+        } catch (e) {
+          console.error("POST /api/chat saveMessages (onFinish)", e);
+        }
       }
     },
   });

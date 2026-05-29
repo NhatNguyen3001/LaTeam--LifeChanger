@@ -1,4 +1,4 @@
-import { ChatSidebar } from "@/components/chat/chat-sidebar";
+import { ChatShell } from "@/components/chat/chat-shell";
 import { listChats } from "@/lib/db/chat-store";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +16,8 @@ export default async function ChatLayout({
   }
 
   return (
-    <div className="flex h-full">
-      <ChatSidebar chats={chats} />
-      <main className="flex h-full min-w-0 flex-1 flex-col">{children}</main>
+    <div className="h-dvh overflow-hidden">
+      <ChatShell chats={chats}>{children}</ChatShell>
     </div>
   );
 }

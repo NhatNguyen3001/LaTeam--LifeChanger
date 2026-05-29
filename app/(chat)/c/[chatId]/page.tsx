@@ -5,10 +5,14 @@ export const dynamic = "force-dynamic";
 
 export default async function ChatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ chatId: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { chatId } = await params;
+  const { q } = await searchParams;
+
   let initialMessages: Awaited<ReturnType<typeof loadChatMessages>> = [];
   try {
     initialMessages = await loadChatMessages(chatId);
@@ -16,5 +20,12 @@ export default async function ChatPage({
     // DB not ready — start an empty thread.
   }
 
-  return <ChatThread chatId={chatId} initialMessages={initialMessages} />;
+  return (
+    <ChatThread
+      key={chatId}
+      chatId={chatId}
+      initialMessages={initialMessages}
+      initialQuery={q}
+    />
+  );
 }

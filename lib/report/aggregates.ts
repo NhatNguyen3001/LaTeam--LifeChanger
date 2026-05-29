@@ -81,6 +81,7 @@ export async function gatherAggregates() {
     { kind: "stat", id: "kpi-avg", label: "Avg workshop rating", value: overall.avg_likert, unit: "/5" },
     { kind: "stat", id: "kpi-subs", label: "Survey responses", value: overall.submissions },
     { kind: "stat", id: "kpi-workshops", label: "Workshops", value: overall.workshops },
+    { kind: "stat", id: "kpi-schools", label: "Partner schools", value: overall.schools },
     { kind: "stat", id: "kpi-positive", label: "Positive sentiment", value: positivePct, unit: "%" },
     {
       kind: "line",

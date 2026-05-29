@@ -3,17 +3,20 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function MessageInput({
   onSend,
   disabled = false,
-  placeholder = "Ask in plain English…",
+  placeholder = "Ask in plain English about workshops, schools, or feedback…",
   initialValue = "",
+  variant = "default",
 }: {
   onSend: (text: string) => void;
   disabled?: boolean;
   placeholder?: string;
   initialValue?: string;
+  variant?: "default" | "home";
 }) {
   const [value, setValue] = useState(initialValue);
 
@@ -35,7 +38,16 @@ export function MessageInput({
   return (
     <form
       onSubmit={submit}
-      className="bg-card focus-within:border-ring/60 relative flex items-end gap-2 rounded-2xl border p-2 shadow-sm transition-colors"
+      className={cn(
+        "relative flex items-end gap-2 p-2 transition-transform",
+        variant === "home"
+          ? "lc-brown-card rounded-full pr-2 pl-5"
+          : cn(
+              "lc-offset-card rounded-2xl border-2 border-lc-tan bg-card",
+              "focus-within:border-foreground focus-within:shadow-[3px_3px_0_0_var(--lc-tan)]",
+            ),
+        disabled && "opacity-70",
+      )}
     >
       <textarea
         value={value}
@@ -44,13 +56,19 @@ export function MessageInput({
         placeholder={placeholder}
         rows={1}
         disabled={disabled}
-        className="max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none disabled:opacity-60"
+        className={cn(
+          "max-h-48 min-h-11 flex-1 resize-none bg-transparent py-2.5 text-sm outline-none disabled:cursor-not-allowed",
+          variant === "home" ? "placeholder:text-foreground/50 px-0" : "placeholder:text-muted-foreground/70 px-2",
+        )}
       />
       <Button
         type="submit"
         size="icon"
         disabled={disabled || value.trim().length === 0}
-        className="size-9 shrink-0 rounded-xl"
+        className={cn(
+          "size-10 shrink-0",
+          variant === "home" ? "rounded-full" : "rounded-xl",
+        )}
       >
         <ArrowUp className="size-4" />
         <span className="sr-only">Send</span>

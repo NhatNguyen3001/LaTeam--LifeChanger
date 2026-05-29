@@ -7,6 +7,14 @@ export type Audience = (typeof AUDIENCES)[number];
 export const reportNarrative = z.object({
   title: z.string(),
   subtitle: z.string().optional(),
+  executiveSummary: z
+    .string()
+    .optional()
+    .describe("2-3 sentence executive summary tailored to the audience."),
+  keyTakeaways: z
+    .array(z.string())
+    .optional()
+    .describe("3-5 bullet points — headline insights for this audience."),
   sections: z.array(
     z.object({
       heading: z.string(),
@@ -25,6 +33,7 @@ export type ReportSpec = ReportNarrative & {
   generatedAt: string;
   widgets: Widget[];
   quotes: { text: string; topic: string }[];
+  sourceChatId?: string;
 };
 
 export const AUDIENCE_GUIDANCE: Record<Audience, string> = {
