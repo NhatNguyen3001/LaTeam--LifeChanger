@@ -210,13 +210,6 @@ data/                     mock dataset + enrichment cache
 drizzle/                  generated migrations
 ```
 
-## Deployment
-
-Deploys to **[Vercel](https://vercel.com/)** as a standard Next.js app: set the environment variables
-above in the project settings and connect the repo. Use the Supabase **transaction pooler**
-(`DATABASE_URL`, port 6543) for the serverless runtime. Run `npm run db:migrate` and `npm run seed`
-against your database before the first deploy.
-
 ## Roadmap
 
 - [ ] Server-side PDF rendering via Puppeteer (current: browser **Print → Save as PDF**)
