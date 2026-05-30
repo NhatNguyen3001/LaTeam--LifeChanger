@@ -131,13 +131,29 @@ function StatTile({ w }: { w: Extract<Widget, { kind: "stat" }> }) {
 }
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  // Render the chart only after mount. Recharts generates non-deterministic
+  // internal ids (clipPaths, gradients), so server-rendering it inside a saved
+  // chat thread causes a hydration mismatch. Keeping it client-only also means
+  // the container has real layout dimensions by the time it renders.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <div className="rounded-2xl border border-foreground/20 bg-white p-4">
       <div className="lc-heading mb-3 text-xs tracking-[0.1em]">{title}</div>
       <div className="h-56 w-full lg:h-64 xl:h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          {children as React.ReactElement}
-        </ResponsiveContainer>
+        {mounted && (
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            // Start from a positive size so Recharts does not warn on the first
+            // render (its default initialDimension is -1) before the
+            // ResizeObserver reports the real size on the next frame.
+            initialDimension={{ width: 500, height: 224 }}
+          >
+            {children as React.ReactElement}
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

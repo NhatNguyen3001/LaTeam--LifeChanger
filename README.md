@@ -2,7 +2,7 @@
 
 # Lifechanger Impact AI
 
-**Ask plain-English questions about youth-mentoring program data — get grounded answers, interactive dashboards rendered inline, and audience-tailored impact reports.**
+**Ask plain-English questions about youth-mentoring program data and get grounded answers, interactive dashboards rendered inline, and audience-tailored impact reports.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev/)
@@ -21,10 +21,10 @@
 
 **Lifechanger Impact AI** is a Claude-style chat application over the program and feedback data of
 [Lifechanger](https://lifechanger.org.au/), a youth-mentoring not-for-profit that runs wellbeing
-workshops in schools across five pillars — **Health, Self, Skills, Purpose, Tribe**.
+workshops in schools across five pillars: **Health, Self, Skills, Purpose, Tribe**.
 
-Staff ask questions in plain English — *"How are workshop ratings trending?"*, *"Which schools are
-underperforming?"*, *"What themes show up in students' feedback?"* — and the assistant answers from
+Staff ask questions in plain English (*"How are workshop ratings trending?"*, *"Which schools are
+underperforming?"*, *"What themes show up in students' feedback?"*) and the assistant answers from
 the data, grounding every response in both the **quantitative** survey scores and the **qualitative**
 free-text feedback. Answers can include **interactive dashboards rendered inline in the conversation**,
 and a one-click **impact report** tailored to funders, schools, or the board.
@@ -35,14 +35,14 @@ and a one-click **impact report** tailored to funders, schools, or the board.
 
 ## Features
 
-- 💬 **Conversational analytics** — multi-turn chat with persisted history (sidebar of conversations, delete / clear).
-- 🧮 **Quantitative Q&A** — `query_data` tool runs guarded, read-only SQL over the program tables (averages, counts, trends, group-by school/pillar/term, equity & facilitator breakdowns).
-- 🗣️ **Qualitative Q&A** — `search_feedback` tool runs `pgvector` semantic search over open-ended answers for themes, sentiment, and representative quotes.
-- 📊 **Inline interactive dashboards** — `make_dashboard` composes a spec from a widget catalog (`stat`, `line`, `bar`, `pie`, `table`) that renders **inside the chat**, with client-side **filters and drill-down**.
-- 🔁 **Conversational dashboard state** — the on-screen dashboard (plus its current filter selection) is attached to follow-up questions, so *"why is that one low?"* reasons about the view you're actually looking at.
-- 📄 **Audience-tailored impact reports** — a one-shot pipeline pulls SQL aggregates, has Claude write the narrative and pick charts, and renders a printable report page (**Print → Save as PDF**) for **funder / school / board**.
-- ⚖️ **Equity & storytelling** — surfaces ICSEA-based equity reach and `HEARTWARMING`-flagged student stories, with de-identification rules baked into the prompts.
-- 🎨 **Branded, responsive UI** — a warm Lifechanger design system (shadcn/ui + Tailwind), markdown-rendered answers, mobile drawer navigation.
+- 💬 **Conversational analytics:** multi-turn chat with persisted history (sidebar of conversations, delete / clear).
+- 🧮 **Quantitative Q&A:** `query_data` tool runs guarded, read-only SQL over the program tables (averages, counts, trends, group-by school/pillar/term, equity & facilitator breakdowns).
+- 🗣️ **Qualitative Q&A:** `search_feedback` tool runs `pgvector` semantic search over open-ended answers for themes, sentiment, and representative quotes.
+- 📊 **Inline interactive dashboards:** `make_dashboard` composes a spec from a widget catalog (`stat`, `line`, `bar`, `pie`, `table`) that renders **inside the chat**, with client-side **filters and drill-down**.
+- 🔁 **Conversational dashboard state:** the on-screen dashboard (plus its current filter selection) is attached to follow-up questions, so *"why is that one low?"* reasons about the view you're actually looking at.
+- 📄 **Audience-tailored impact reports:** a one-shot pipeline pulls SQL aggregates, has Claude write the narrative and pick charts, and renders a printable report page (**Print → Save as PDF**) for **funder / school / board**.
+- ⚖️ **Equity & storytelling:** surfaces ICSEA-based equity reach and `HEARTWARMING`-flagged student stories, with de-identification rules baked into the prompts.
+- 🎨 **Branded, responsive UI:** a warm Lifechanger design system (shadcn/ui + Tailwind), markdown-rendered answers, mobile drawer navigation.
 
 ## Architecture
 
@@ -97,10 +97,10 @@ Normalised from the flat CSV (grain: **one row per answer**; a submission spans 
 | Table | Purpose |
 |---|---|
 | `schools` | School, region, geolocation, **ICSEA percentile** (equity), enrolments |
-| `agreements` | Salesforce Opportunity — funder, stage, amount |
+| `agreements` | Salesforce Opportunity: funder, stage, amount |
 | `workshops` | Pillar/topic, date, facilitator, delivery debrief (compromised/deviated, "gems") |
-| `submissions` | One student survey — year level, ATSI, gender |
-| `answers` | Per-question answer · Likert `answer_value` (1–5) **or** open-ended text · pre-computed `sentiment`, `themes[]`, `embedding vector(1536)` |
+| `submissions` | One student survey: year level, ATSI, gender |
+| `answers` | Per-question answer · Likert `answer_value` (1-5) **or** open-ended text · pre-computed `sentiment`, `themes[]`, `embedding vector(1536)` |
 | `chats` / `messages` | Conversation history |
 | `dashboards` | Referenceable dashboard specs (for follow-ups) |
 | `reports` | Saved report compositions |
@@ -133,14 +133,14 @@ cp .env.example .env        # .env and .env.local are both read by Next.js
 
 | Variable | Purpose |
 |---|---|
-| `ANTHROPIC_API_KEY` | Claude — chat, ingest tagging, report writing |
+| `ANTHROPIC_API_KEY` | Claude: chat, ingest tagging, report writing |
 | `OPENAI_API_KEY` | OpenAI embeddings for `search_feedback` |
-| `DATABASE_URL` | Supabase **transaction pooler** (port `6543`) — used by the app |
-| `DIRECT_URL` | Supabase **session pooler** (port `5432`) — used by migrations & seed |
+| `DATABASE_URL` | Supabase **transaction pooler** (port `6543`), used by the app |
+| `DIRECT_URL` | Supabase **session pooler** (port `5432`), used by migrations and seed |
 | `NEXT_PUBLIC_SUPABASE_URL` / `*_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Supabase project URL + keys |
 
 > **Supabase connection note:** use the **pooler** host (`aws-<n>-<region>.pooler.supabase.com`,
-> username `postgres.<project-ref>`) — the direct `db.<ref>.supabase.co` host is IPv6-only and won't
+> username `postgres.<project-ref>`). The direct `db.<ref>.supabase.co` host is IPv6-only and won't
 > resolve on most networks. Copy both strings from **Project Settings → Database → Connection string**.
 
 ### 3. Enable pgvector & apply the schema
